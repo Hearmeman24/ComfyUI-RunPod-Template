@@ -43,6 +43,7 @@ FROM base AS final
 COPY --from=downloader /comfyui/extra_model_paths.yaml /comfyui/extra_model_paths.yaml
 COPY --from=downloader /comfyui/models /comfyui/models
 COPY src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json *snapshot*.json /
+RUN python -m pip install opencv-python
 RUN chmod +x /start.sh /restore_snapshot.sh \
    && /restore_snapshot.sh
 
