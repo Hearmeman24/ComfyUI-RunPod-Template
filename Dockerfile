@@ -31,10 +31,11 @@ WORKDIR /comfyui
 COPY src/extra_model_paths.yaml /comfyui/extra_model_paths.yaml
 
 WORKDIR /comfyui/models
-RUN mkdir -p /comfyui/models/ipadapter /comfyui/models/ultralytics/bbox /comfyui/models/ultralytics/segm \
+RUN mkdir -p /comfyui/models/ipadapter /comfyui/models/ultralytics/bbox /comfyui/models/ultralytics/segm /comfyui/models/sams \
    && wget -O /comfyui/models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin \
    && wget -O /comfyui/models/ipadapter/ip-adapter-faceid-plusv2_sdxl_lora.safetensors https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors \
-   && wget -O /comfyui/models/ultralytics/segm/face_yolov8m-seg_60.pt https://huggingface.co/24xx/segm/resolve/main/face_yolov8m-seg_60.pt
+   && wget -O /comfyui/models/ultralytics/segm/face_yolov8m-seg_60.pt https://huggingface.co/24xx/segm/resolve/main/face_yolov8m-seg_60.pt \
+   && wget -O /comfyui/models/sams/sam_vit_b_01ec64.pth https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/sams/sam_vit_b_01ec64.pth
 
 COPY src/Eyes.pt /comfyui/models/ultralytics/bbox/Eyes.pt
 
