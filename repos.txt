@@ -1,0 +1,5 @@
+https://github.com/ltdrdata/ComfyUI-Manager
+https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
+https://github.com/Fannovel16/comfyui_controlnet_aux.git
+https://github.com/rgthree/rgthree-comfy.git
+https://github.com/ssitu/ComfyUI_UltimateSDUpscale

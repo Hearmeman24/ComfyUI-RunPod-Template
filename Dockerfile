@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Consolidated installation to reduce layers
 RUN apt-get update && apt-get install -y --no-install-recommends \
-   python3.10 python3-pip git wget libgl1 libglib2.0-0 \
+   python3.10 python3-pip git git-lfs wget vim libgl1 libglib2.0-0 \
    python3-dev build-essential gcc \
    && ln -sf /usr/bin/python3.10 /usr/bin/python \
    && ln -sf /usr/bin/pip3 /usr/bin/pip \
@@ -17,35 +17,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    && rm -rf /var/lib/apt/lists/*
 
 # Use build cache for pip installations
-RUN pip install --no-cache-dir \
-   comfy-cli runpod requests
+RUN pip install --no-cache-dir gdown comfy-cli jupyterlab
 
-# Install ComfyUI in one step
-RUN /usr/bin/yes | comfy --workspace /comfyui install \
-   --cuda-version 11.8 --nvidia --version 0.3.12
-
-# Model download stage with wget optimization
-FROM base AS downloader
-WORKDIR /comfyui
-
-COPY src/extra_model_paths.yaml /comfyui/extra_model_paths.yaml
-
-WORKDIR /comfyui/models
-RUN mkdir -p /comfyui/models/ipadapter /comfyui/models/ultralytics/bbox /comfyui/models/ultralytics/segm /comfyui/models/sams \
-   && wget -O /comfyui/models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin \
-   && wget -O /comfyui/models/ipadapter/ip-adapter-faceid-plusv2_sdxl_lora.safetensors https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors \
-   && wget -O /comfyui/models/ultralytics/segm/face_yolov8m-seg_60.pt https://huggingface.co/24xx/segm/resolve/main/face_yolov8m-seg_60.pt \
-   && wget -O /comfyui/models/sams/sam_vit_b_01ec64.pth https://huggingface.co/datasets/Gourieff/ReActor/resolve/main/models/sams/sam_vit_b_01ec64.pth
-
-COPY src/Eyes.pt /comfyui/models/ultralytics/bbox/Eyes.pt
-
-# Final stage
 FROM base AS final
-COPY --from=downloader /comfyui/extra_model_paths.yaml /comfyui/extra_model_paths.yaml
-COPY --from=downloader /comfyui/models /comfyui/models
-COPY src/start.sh src/restore_snapshot.sh src/rp_handler.py test_input.json *snapshot*.json /
 RUN python -m pip install opencv-python
-RUN chmod +x /start.sh /restore_snapshot.sh \
-   && /restore_snapshot.sh
+RUN wget https://github.com/comfyanonymous/ComfyUI/raw/refs/heads/master/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+# Copy the repos.txt file into the container
+
+COPY src/start.sh /start.sh
+COPY repos.txt /repos.txt
+
+# Configure Jupyterlab
+RUN mkdir -p /root/.jupyter && \
+    echo "c.NotebookApp.token = ''" > /root/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.password = ''" >> /root/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.open_browser = False" >> /root/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.port = 8888" >> /root/.jupyter/jupyter_notebook_config.py
+
+RUN chmod +x /start.sh
+
 
 CMD ["/start.sh"]
