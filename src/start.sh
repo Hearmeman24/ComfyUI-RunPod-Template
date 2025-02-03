@@ -7,33 +7,20 @@ export LD_PRELOAD="${TCMALLOC}"
 # Set the network volume path
 NETWORK_VOLUME="/workspace"
 COMFYUI_DIR="$NETWORK_VOLUME/ComfyUI"
-WORKFLOW_DIR="$NETWORK_VOLUME/ComfyUI/pysssss-workflows"
-
-if [ ! -d "$COMFYUI_DIR" ]; then
-    echo "Installing ComfyUI on network volume..."
-    git clone https://github.com/comfyanonymous/ComfyUI "$COMFYUI_DIR"
-else
-    echo "ComfyUI already installed on network volume."
-fi
+WORKFLOW_DIR="$NETWORK_VOLUME/ComfyUI/user/default/workflows"
 
 # Set the target directory
 CUSTOM_NODES_DIR="$NETWORK_VOLUME/ComfyUI/custom_nodes"
 
+if [ ! -d "$COMFYUI_DIR" ]; then
+    mv /ComfyUI "$COMFYUI_DIR"
+else
+    echo "Directory already exists, skipping move."
+fi
+
 # Change to the directory
 cd "$CUSTOM_NODES_DIR" || exit 1
 
-# Read repos.txt line by line and clone if not already cloned
-while read -r repo; do
-    if [ -n "$repo" ]; then
-        repo_name=$(basename "$repo" .git)
-        if [ ! -d "$repo_name" ]; then
-            echo "Cloning $repo..."
-            git clone "$repo"
-        else
-            echo "$repo_name already exists, skipping..."
-        fi
-    fi
-done < /repos.txt
 
 if [ "$install_pulid" == "true" ]; then
     echo "Installing PuLID and Starting ComfyUI"
@@ -42,6 +29,8 @@ if [ "$install_pulid" == "true" ]; then
     if [ ! -d "$NETWORK_VOLUME/ComfyUI/models/insightface" ]; then
         echo "Cloning InsightFace repository..."
         git clone https://huggingface.co/Aitrepreneur/insightface "$NETWORK_VOLUME/ComfyUI/models/insightface"
+        echo "Installing InsightFace python dependencies"
+        pip install --no-cache-dir numpy insightface==0.7.3
     fi
 
     # Clone Pulid Flux Custom Node
@@ -67,8 +56,6 @@ if [ "$install_pulid" == "true" ]; then
 
     # Install Python dependencies
     echo "Installing Python dependencies..."
-    pip install --no-cache-dir numpy
-    pip install --no-cache-dir insightface==0.7.3
     /usr/bin/python3 -m pip install facexlib
     /usr/bin/python3 -m pip install onnxruntime-gpu
     /usr/bin/python3 -m pip install timm
@@ -107,21 +94,77 @@ if [ "$download_flux" == "true" ]; then
     echo "Finished downloading Flux models!"
 fi
 
-# Requirements installations for Custom Nodes
-if [ -f "$NETWORK_VOLUME/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/requirements.txt" ]; then
-    pip install -r "$NETWORK_VOLUME/ComfyUI/custom_nodes/ComfyUI-Impact-Pack/requirements.txt"
-fi
-if [ -f "$NETWORK_VOLUME/ComfyUI/custom_nodes/comfyui_controlnet_aux/requirements.txt" ]; then
-    pip install -r "$NETWORK_VOLUME/ComfyUI/custom_nodes/comfyui_controlnet_aux/requirements.txt"
+if [ "$download_hunyuan" == "true" ]; then
+    echo "Downloading Hunyuan diffusion model"
+    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/diffusion_models"
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/hunyuan_video_720_cfgdistill_bf16.safetensors" ]; then
+        wget -c -O "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/hunyuan_video_720_cfgdistill_bf16.safetensors" \
+        https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_720_cfgdistill_bf16.safetensors
+    fi
+
+    echo "Downloading text encoders"
+    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/text_encoders"
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" ]; then
+        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" \
+        https://huggingface.co/Comfy-Org/HunyuanVideo_repackaged/resolve/main/split_files/text_encoders/clip_l.safetensors
+    fi
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/llava_llama3_fp8_scaled.safetensors" ]; then
+        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/llava_llama3_fp8_scaled.safetensors" \
+        https://huggingface.co/Comfy-Org/HunyuanVideo_repackaged/resolve/main/split_files/text_encoders/llava_llama3_fp8_scaled.safetensors
+    fi
+
+    echo "Downloading VAE"
+    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/vae"
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/vae/hunyuan_video_vae_fp32.safetensors" ]; then
+        wget -O "$NETWORK_VOLUME/ComfyUI/models/vae/hunyuan_video_vae_fp32.safetensors" \
+        https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_vae_fp32.safetensors
+    fi
+
+    # Download upscale model
+    echo "Downloading upscale model"
+    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/upscale_models"
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4x_foolhardy_Remacri.pt" ]; then
+        wget -O "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4x_foolhardy_Remacri.pt" \
+        https://huggingface.co/FacehugmanIII/4x_foolhardy_Remacri/resolve/main/4x_foolhardy_Remacri.pth
+    fi
+
+    # Download film network model
+    echo "Downloading film network model"
+    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/film_net_fp32.pt" ]; then
+        wget -O "$NETWORK_VOLUME/ComfyUI/models/upscale_models/film_net_fp32.pt" \
+        https://huggingface.co/nguu/film-pytorch/resolve/887b2c42bebcb323baf6c3b6d59304135699b575/film_net_fp32.pt
+    fi
+
+    echo "Finished downloading models!"
 fi
 
-echo "Copying worflow"
+echo "Checking and copying workflow..."
 mkdir -p "$WORKFLOW_DIR"
-mv "Basic PuLID.json" "$WORKFLOW_DIR"
+
+# Ensure the file exists in the current directory before moving it
+cd /
+
+WORKFLOWS=("Basic_PuLID.json" "Basic_Hunyuan.json" "TheAIDoctor_Hunyuan_Video_24GB_VRAM.json")
+
+for WORKFLOW in "${WORKFLOWS[@]}"; do
+    if [ -f "./$WORKFLOW" ]; then
+        if [ ! -f "$WORKFLOW_DIR/$WORKFLOW" ]; then
+            mv "./$WORKFLOW" "$WORKFLOW_DIR"
+            echo "$WORKFLOW copied."
+        else
+            echo "$WORKFLOW already exists in the target directory, skipping move."
+        fi
+    else
+        echo "$WORKFLOW not found in the current directory."
+    fi
+done
+
+# Workspace as main working directory
+echo 'cd /workspace' >> ~/.bashrc
 
 # Start JupyterLab in the background
 echo "Starting JupyterLab..."
-jupyter-lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --NotebookApp.password='' &
+jupyter-lab --ip=0.0.0.0 --allow-root --no-browser --NotebookApp.token='' --NotebookApp.password='' --ServerApp.allow_origin='*' --ServerApp.allow_credentials=True --notebook-dir=/workspace &
 
 # Start ComfyUI
 echo "Starting ComfyUI"
