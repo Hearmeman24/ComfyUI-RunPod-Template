@@ -50,7 +50,11 @@ RUN for repo in \
     https://github.com/chrisgoringe/cg-use-everywhere.git \
     https://github.com/welltop-cn/ComfyUI-TeaCache.git \
     https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git \
-    https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git; \
+    https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git \
+    https://github.com/Jonseed/ComfyUI-Detail-Daemon.git \
+    https://github.com/TTPlanetPig/Comfyui_TTP_Toolset.git \
+    https://github.com/facok/ComfyUI-HunyuanVideoMultiLora.git \
+    https://github.com/M1kep/ComfyLiterals.git; \
     do \
         cd /ComfyUI/custom_nodes; \
         repo_dir=$(basename "$repo" .git); \
@@ -72,6 +76,9 @@ RUN for repo in \
 COPY src/start.sh /start.sh
 COPY Basic_PuLID.json /Basic_PuLID.json
 COPY Basic_Hunyuan.json /Basic_Hunyuan.json
-COPY TheAIDoctor_Hunyuan_Video_24GB_VRAM.json /TheAIDoctor_Hunyuan_Video_24GB_VRAM.json
+COPY Basic_Flux.json /Basic_Flux.json
+COPY Hunyuan_img2vid.json /Hunyuan_img2vid.json
+COPY Hunyuan_with_Restore_Faces_Upscaling.json /Hunyuan_with_Restore_Faces_Upscaling.json
+
 
 CMD ["/start.sh"]
