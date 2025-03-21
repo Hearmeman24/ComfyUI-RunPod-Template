@@ -169,6 +169,27 @@ done
 
 echo "All models downloaded successfully!"
 
+if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4xLSDIR.pth" ]; then
+    if [ -f "/4xLSDIR.pth" ]; then
+        mv "/4xLSDIR.pth" "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4xLSDIR.pth"
+        echo "Moved 4xLSDIR.pth to the correct location."
+    else
+        echo "4xLSDIR.pth not found in the root directory."
+    fi
+else
+    echo "4xLSDIR.pth already exists. Skipping."
+fi
+if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4xFaceUpDAT.pth" ]; then
+    if [ -f "/4xFaceUpDAT.pth" ]; then
+        mv "/4xFaceUpDAT.pth" "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4xFaceUpDAT.pth"
+        echo "Moved 4xFaceUpDAT.pth to the correct location."
+    else
+        echo "4xFaceUpDAT.pth not found in the root directory."
+    fi
+else
+    echo "4xFaceUpDAT.pth already exists. Skipping."
+fi
+
 WORKFLOWS=("Basic_PuLID.json" "Basic_Flux.json")
 
 for WORKFLOW in "${WORKFLOWS[@]}"; do

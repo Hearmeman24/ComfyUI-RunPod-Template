@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Consolidated installation to reduce layers
 RUN apt-get update && apt-get install -y --no-install-recommends \
-   python3.10 python3-pip git git-lfs wget vim libgl1 libglib2.0-0 \
+   python3.10 python3-pip git git-lfs libportaudio2 wget vim libgl1 libglib2.0-0 \
    python3-dev build-essential gcc \
    && ln -sf /usr/bin/python3.10 /usr/bin/python \
    && ln -sf /usr/bin/pip3 /usr/bin/pip \
@@ -39,6 +39,7 @@ RUN for repo in \
     https://github.com/ltdrdata/ComfyUI-Impact-Pack.git \
     https://github.com/Fannovel16/comfyui_controlnet_aux.git \
     https://github.com/yolain/ComfyUI-Easy-Use.git \
+    https://github.com/ShmuelRonen/ComfyUI-Gemini_Flash_2.0_Exp.git \
     https://github.com/kijai/ComfyUI-Florence2.git \
     https://github.com/WASasquatch/was-node-suite-comfyui.git \
     https://github.com/theUpsider/ComfyUI-Logic.git \
@@ -48,7 +49,6 @@ RUN for repo in \
     https://github.com/chrisgoringe/cg-use-everywhere.git \
     https://github.com/welltop-cn/ComfyUI-TeaCache.git \
     https://github.com/Jonseed/ComfyUI-Detail-Daemon.git \
-    https://github.com/TTPlanetPig/Comfyui_TTP_Toolset.git \
     https://github.com/M1kep/ComfyLiterals.git; \
     do \
         cd /ComfyUI/custom_nodes; \
@@ -66,7 +66,9 @@ RUN for repo in \
         fi; \
     done
 
-COPY src/start.sh /start.sh
+COPY src/start_script.sh /start_script.sh
+COPY 4xLSDIR.pth /4xLSDIR.pth
+COPY 4xFaceUpDAT.pth /4xFaceUpDAT.pth
 COPY Basic_PuLID.json /Basic_PuLID.json
 COPY Basic_Flux.json /Basic_Flux.json
 
