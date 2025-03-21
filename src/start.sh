@@ -4,6 +4,15 @@
 TCMALLOC="$(ldconfig -p | grep -Po "libtcmalloc.so.\d" | head -n 1)"
 export LD_PRELOAD="${TCMALLOC}"
 
+# This is in case there's any special installs or overrides that needs to occur when starting the machine before starting ComfyUI
+if [ -f "/workspace/additional_params.sh" ]; then
+    chmod +x /workspace/additional_params.sh
+    echo "Executing additional_params.sh..."
+    /workspace/additional_params.sh
+else
+    echo "additional_params.sh not found in /workspace. Skipping..."
+fi
+
 # Set the network volume path
 NETWORK_VOLUME="/workspace"
 
@@ -30,7 +39,48 @@ else
     echo "Directory already exists, skipping move."
 fi
 
+echo "Downloading CivitAI download script to /usr/local/bin"
+git clone "https://github.com/Hearmeman24/CivitAI_Downloader.git" || { echo "Git clone failed"; exit 1; }
+mv CivitAI_Downloader/download.py "/usr/local/bin/" || { echo "Move failed"; exit 1; }
+chmod +x "/usr/local/bin/download.py" || { echo "Chmod failed"; exit 1; }
+rm -rf CivitAI_Downloader  # Clean up the cloned repo
 
+download_model() {
+  local destination_dir="$1"
+  local destination_file="$2"
+  local repo_id="$3"
+  local file_path="$4"
+
+  mkdir -p "$destination_dir"
+
+  if [ ! -f "$destination_dir/$destination_file" ]; then
+    echo "Downloading $destination_file..."
+
+    # First, download to a temporary directory
+    local temp_dir=$(mktemp -d)
+    huggingface-cli download "$repo_id" "$file_path" --local-dir "$temp_dir" --resume-download
+
+    # Find the downloaded file in the temp directory (may be in subdirectories)
+    local downloaded_file=$(find "$temp_dir" -type f -name "$(basename "$file_path")")
+
+    # Move it to the destination directory with the correct name
+    if [ -n "$downloaded_file" ]; then
+      mv "$downloaded_file" "$destination_dir/$destination_file"
+      echo "Successfully downloaded to $destination_dir/$destination_file"
+    else
+      echo "Error: File not found after download"
+    fi
+
+    # Clean up temporary directory
+    rm -rf "$temp_dir"
+  else
+    echo "$destination_file already exists, skipping download."
+  fi
+}
+
+DIFFUSION_MODELS_DIR="$NETWORK_VOLUME/ComfyUI/models/diffusion_models"
+TEXT_ENCODERS_DIR="$NETWORK_VOLUME/ComfyUI/models/text_encoders"
+VAE_DIR="$NETWORK_VOLUME/ComfyUI/models/vae"
 
 # Change to the directory
 cd "$CUSTOM_NODES_DIR" || exit 1
@@ -78,92 +128,21 @@ if [ "$install_pulid" == "true" ]; then
 fi
 
 if [ "$download_flux" == "true" ]; then
-    if [ -z "$hugging_face_token" ]; then
-        echo "Error: hugging_face_token is not set. Exiting..."
-        exit 1
-    fi
+  # Download flux1-dev model
+# Download flux1-dev model from the new repository
+download_model "$DIFFUSION_MODELS_DIR" "flux1-dev.safetensors" \
+  "realung/flux1-dev.safetensors" "flux1-dev.safetensors"
 
-    echo "Downloading flux1-dev.safetensors"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/diffusion_models"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/flux1-dev.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/flux1-dev.safetensors" --header="Authorization: Bearer $hugging_face_token" https://huggingface.co/black-forest-labs/FLUX.1-dev/resolve/main/flux1-dev.safetensors
-    fi
+# Download text encoders
+download_model "$TEXT_ENCODERS_DIR" "clip_l.safetensors" \
+  "comfyanonymous/flux_text_encoders" "clip_l.safetensors"
 
-    echo "Downloading text encoders"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/text_encoders"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/clip_l.safetensors
-    fi
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/t5xxl_fp8_e4m3fn.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/t5xxl_fp8_e4m3fn.safetensors" https://huggingface.co/comfyanonymous/flux_text_encoders/resolve/main/t5xxl_fp8_e4m3fn.safetensors
-    fi
+download_model "$TEXT_ENCODERS_DIR" "t5xxl_fp8_e4m3fn.safetensors" \
+  "comfyanonymous/flux_text_encoders" "t5xxl_fp8_e4m3fn.safetensors"
 
-    echo "Downloading VAE"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/vae"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/vae/ae.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/vae/ae.safetensors" --header="Authorization: Bearer $hugging_face_token" https://huggingface.co/black-forest-labs/FLUX.1-schnell/resolve/main/ae.safetensors
-    fi
-
-    echo "Finished downloading Flux models!"
-fi
-
-if [ "$download_hunyuan" == "true" ]; then
-    echo "Downloading Hunyuan diffusion model"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/diffusion_models"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/hunyuan_video_720_cfgdistill_bf16.safetensors" ]; then
-        wget -c -O "$NETWORK_VOLUME/ComfyUI/models/diffusion_models/hunyuan_video_720_cfgdistill_bf16.safetensors" \
-        https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_720_cfgdistill_bf16.safetensors
-    fi
-
-    echo "Downloading text encoders"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/text_encoders"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/clip_l.safetensors" \
-        https://huggingface.co/Comfy-Org/HunyuanVideo_repackaged/resolve/main/split_files/text_encoders/clip_l.safetensors
-    fi
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/llava_llama3_fp8_scaled.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/llava_llama3_fp8_scaled.safetensors" \
-        https://huggingface.co/Comfy-Org/HunyuanVideo_repackaged/resolve/main/split_files/text_encoders/llava_llama3_fp8_scaled.safetensors
-    fi
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/text_encoders/Long-ViT-L-14-GmP-SAE-full-model.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/text_encoders/Long-ViT-L-14-GmP-SAE-full-model.safetensors" \
-        https://huggingface.co/zer0int/LongCLIP-SAE-ViT-L-14/resolve/main/Long-ViT-L-14-GmP-SAE-full-model.safetensors
-    fi
-
-    echo "Downloading VAE"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/vae"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/vae/hunyuan_video_vae_fp32.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/vae/hunyuan_video_vae_fp32.safetensors" \
-        https://huggingface.co/Kijai/HunyuanVideo_comfy/resolve/main/hunyuan_video_vae_fp32.safetensors
-    fi
-
-    # Download upscale model
-    echo "Downloading upscale models"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/upscale_models"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4x_foolhardy_Remacri.pt" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/upscale_models/4x_foolhardy_Remacri.pt" \
-        https://huggingface.co/FacehugmanIII/4x_foolhardy_Remacri/resolve/main/4x_foolhardy_Remacri.pth
-    fi
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/OmniSR_X2_DIV2K.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/upscale_models/OmniSR_X2_DIV2K.safetensors" \
-        https://huggingface.co/Acly/Omni-SR/resolve/main/OmniSR_X2_DIV2K.safetensors
-    fi
-
-    echo "Downloading img2vid lora"
-    mkdir -p "$NETWORK_VOLUME/ComfyUI/models/loras"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/loras/leapfusion_img2vid544p_comfy.safetensors" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/loras/leapfusion_img2vid544p_comfy.safetensors" \
-        https://huggingface.co/Kijai/Leapfusion-image2vid-comfy/resolve/main/leapfusion_img2vid544p_comfy.safetensors
-    fi
-
-    # Download film network model
-    echo "Downloading film network model"
-    if [ ! -f "$NETWORK_VOLUME/ComfyUI/models/upscale_models/film_net_fp32.pt" ]; then
-        wget -O "$NETWORK_VOLUME/ComfyUI/models/upscale_models/film_net_fp32.pt" \
-        https://huggingface.co/nguu/film-pytorch/resolve/887b2c42bebcb323baf6c3b6d59304135699b575/film_net_fp32.pt
-    fi
-
-    echo "Finished downloading models!"
+# Download VAE
+download_model "$VAE_DIR" "ae.safetensors" \
+  "realung/flux1-dev.safetensors" "ae.safetensors"
 fi
 
 echo "Checking and copying workflow..."
@@ -172,7 +151,25 @@ mkdir -p "$WORKFLOW_DIR"
 # Ensure the file exists in the current directory before moving it
 cd /
 
-WORKFLOWS=("Basic_PuLID.json" "Basic_Hunyuan.json" "Hunyuan_with_Restore_Faces_Upscaling.json" "Hunyuan_img2vid.json" "Basic_Flux.json")
+declare -A MODEL_CATEGORIES=(
+    ["$NETWORK_VOLUME/ComfyUI/models/diffusion_models"]="$MODEL_IDS_TO_DOWNLOAD"
+    ["$NETWORK_VOLUME/ComfyUI/models/loras"]="$LORAS_IDS_TO_DOWNLOAD"
+)
+
+# Ensure directories exist and download models
+for TARGET_DIR in "${!MODEL_CATEGORIES[@]}"; do
+    mkdir -p "$TARGET_DIR"
+    IFS=',' read -ra MODEL_IDS <<< "${MODEL_CATEGORIES[$TARGET_DIR]}"
+
+    for MODEL_ID in "${MODEL_IDS[@]}"; do
+        echo "Downloading model: $MODEL_ID to $TARGET_DIR"
+        (cd "$TARGET_DIR" && download.py --model "$MODEL_ID")
+    done
+done
+
+echo "All models downloaded successfully!"
+
+WORKFLOWS=("Basic_PuLID.json" "Basic_Flux.json")
 
 for WORKFLOW in "${WORKFLOWS[@]}"; do
     if [ -f "./$WORKFLOW" ]; then
@@ -188,17 +185,9 @@ for WORKFLOW in "${WORKFLOWS[@]}"; do
 done
 
 # Workspace as main working directory
-echo 'cd /workspace' >> ~/.bashrc
-
-# This is in case there's any special installs or overrides that needs to occur when starting the machine before starting ComfyUI
-if [ -f "/workspace/additional_params.sh" ]; then
-    chmod +x /workspace/additional_params.sh
-    echo "Executing additional_params.sh..."
-    /workspace/additional_params.sh
-else
-    echo "additional_params.sh not found in /workspace. Skipping..."
-fi
+echo "cd $NETWORK_VOLUME" >> ~/.bashrc
 
 # Start ComfyUI
 echo "Starting ComfyUI"
 python3 "$NETWORK_VOLUME/ComfyUI/main.py" --listen
+

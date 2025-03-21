@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
    && rm -rf /var/lib/apt/lists/*
 
 # Use build cache for pip installations
-RUN pip install --no-cache-dir gdown sageattention comfy-cli jupyterlab jupyterlab-lsp \
+RUN pip install --no-cache-dir gdown comfy-cli jupyterlab jupyterlab-lsp \
     jupyter-server jupyter-server-terminals \
     ipykernel jupyterlab_code_formatter
 EXPOSE 8888
@@ -44,16 +44,11 @@ RUN for repo in \
     https://github.com/theUpsider/ComfyUI-Logic.git \
     https://github.com/cubiq/ComfyUI_essentials.git \
     https://github.com/chrisgoringe/cg-image-picker.git \
-    https://github.com/chflame163/ComfyUI_LayerStyle.git \
-    https://github.com/shadowcz007/comfyui-mixlab-nodes.git \
     https://github.com/Gourieff/ComfyUI-ReActor.git \
     https://github.com/chrisgoringe/cg-use-everywhere.git \
     https://github.com/welltop-cn/ComfyUI-TeaCache.git \
-    https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git \
-    https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git \
     https://github.com/Jonseed/ComfyUI-Detail-Daemon.git \
     https://github.com/TTPlanetPig/Comfyui_TTP_Toolset.git \
-    https://github.com/facok/ComfyUI-HunyuanVideoMultiLora.git \
     https://github.com/M1kep/ComfyLiterals.git; \
     do \
         cd /ComfyUI/custom_nodes; \
@@ -71,14 +66,9 @@ RUN for repo in \
         fi; \
     done
 
-
-
 COPY src/start.sh /start.sh
 COPY Basic_PuLID.json /Basic_PuLID.json
-COPY Basic_Hunyuan.json /Basic_Hunyuan.json
 COPY Basic_Flux.json /Basic_Flux.json
-COPY Hunyuan_img2vid.json /Hunyuan_img2vid.json
-COPY Hunyuan_with_Restore_Faces_Upscaling.json /Hunyuan_with_Restore_Faces_Upscaling.json
 
 
-CMD ["/start.sh"]
+CMD ["/start_script.sh"]
