@@ -1,0 +1,11 @@
+# Ignore everything
+*
+
+# But not the src directory
+!src/
+
+# Ignore everything in the src directory
+src/*
+
+# Except the start.sh file
+!src/start.sh
